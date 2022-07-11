@@ -25,22 +25,28 @@ int main()
 void new_file() // ToDo: Implementeer volgens specificatie.
 { std::string bestandsnaam;
 std::string bestandtekst;
+std::string tekst;
 std::cout << "schrijf een naam van het nieuwe bestand: ";
 std::getline(std::cin, bestandsnaam);
 std::cout << "Wat wil je schrijven in het bestand, eindig dit bericht met <EOF> : ";
-std::getline(std::cin, bestandtekst);
+while(std::getline(std::cin, tekst)){
+	if(tekst == "<EOF>"){
+		break;
+	}else{
+		bestandtekst += tekst + "\n";
+	}
+}
+int file = syscall(SYS_creat, bestandsnaam.c_str(), 0777);
+ssize_t a = syscall(SYS_write, file, bestandtekst.c_str(), bestandtekst.size());
 
-int file = creat(bestandsnaam.c_str(), 0777);
-ssize_t a = write(file, bestandtekst.c_str(), bestandtekst.size());
-
-//open(bestandsnaam.c_str(), r_only)
+//syscall(SYS_open, bestandsnaam.c_str(), r_only)
  }
 
 void list() // ToDo: Implementeer volgens specificatie.
 { std::cout << "ToDo: Implementeer hier list()" << std::endl;
-if(fork() == 0){
+if(syscall(SYS_fork) == 0){
 char *args[] = {(char *) "/usr/bin/ls", (char *) "-la", (char *) 0};
-execv("/usr/bin/ls", args);
+syscall(SYS_execve, "/usr/bin/ls", args);
 }else{
 int eindstatus;
 wait(&eindstatus);
@@ -51,50 +57,50 @@ void find() // ToDo: Implementeer volgens specificatie.
 { std::cout << "wat zoek je" << std::endl;
   std::string zoeken;
   std::getline(std::cin, zoeken);
-  int pijpme[2];
+  int pijp[2];
   int status;
-  int controle = pipe(pijpme);
-  int id = fork();
+  int controle = syscall(SYS_pipe, pijp);
+  int id = syscall(SYS_fork);
   if(id == 0){
       char *arguments[] = {(char*)"find", (char*)"./",(char*)0};
-      close(pijpme[0]);
-      dup2(pijpme[1], STDOUT_FILENO);
-      execv("/usr/bin/find",arguments);
+      syscall(SYS_close, pijp[0]);
+      syscall(SYS_dup2, pijp[1], STDOUT_FILENO);
+      syscall(SYS_execve, "/usr/bin/find",arguments, NULL);
   }
-  id = fork();
-  if(id == 0){
+  int id2 = syscall(SYS_fork);
+  if(id2 == 0){
       char *parameter[]= {(char*)"grep", (char*)zoeken.c_str(), (char*)0};
-      close(pijpme[1]);
-      dup2(pijpme[0], STDIN_FILENO);
-      execv("/usr/bin/grep",parameter);
+      syscall(SYS_close, pijp[1]);
+      syscall(SYS_dup2, pijp[0], STDIN_FILENO);
+      syscall(SYS_execve, "/usr/bin/grep",parameter, NULL);
   }
-  close(pijpme[0]);
-  close(pijpme[1]);
-  waitpid(-1, &status, 0);
-  waitpid(-1, &status, 0);
+  syscall(SYS_close, pijp[0]);
+  syscall(SYS_close, pijp[1]);
+  syscall(SYS_wait4, id, NULL, NULL, NULL);
+  syscall(SYS_wait4, id2, NULL, NULL, NULL);
    }
 
 
 void seek() // ToDo: Implementeer volgens specificatie.
 { std::cout << "ToDo: Implementeer hier seek()" << std::endl;
 std::string loop = "loop.txt";
-int seekCreated = creat("seek.txt", 0777);
-int loopCreated = creat(loop.c_str(), 0777);
-write(loopCreated, "x", 1);
+int seekCreated = syscall(SYS_creat, "seek.txt", 0777);
+int loopCreated = syscall(SYS_creat, loop.c_str(), 0777);
+syscall(SYS_write, loopCreated, "x", 1);
 std::string message = "\0";
 for(int i = 0; i < 50000; i++){
-write(loopCreated, "\0", 1);
+syscall(SYS_write, loopCreated, "\0", 1);
 }
-write(loopCreated, "x", 1);
+syscall(SYS_write, loopCreated, "x", 1);
 
-write(seekCreated, "x", 1);
-lseek(seekCreated, 50000, SEEK_END);
-write(seekCreated, "x", 1);
+syscall(SYS_write, seekCreated, "x", 1);
+syscall(SYS_lseek, seekCreated, 50000, SEEK_END);
+syscall(SYS_write, seekCreated, "x", 1);
 
-int id = fork();
+int id = syscall(SYS_fork);
 if(id == 0){
 char *args[] = {(char *) "/usr/bin/ls", (char *) "-lS", (char *) 0};
-execv("/usr/bin/ls", args);
+syscall(SYS_execve, "/usr/bin/ls", args);
 }else{
 int eindstatus;
 wait(&eindstatus);
